@@ -298,23 +298,27 @@ class Component(ApplicationSession):
             #resized_img = img.resize((NEW_X,NEW_Y))
             #final_img = np.array(resized_img)
 
-            # Example: using the normalized coordinates for robot 0 and ball
-            position = [round(received_frame.coordinates[MY_TEAM][0][X]/2.05, 2), round(received_frame.coordinates[MY_TEAM][0][Y]/1.35, 2),
-                        round(received_frame.coordinates[MY_TEAM][0][TH]/(2*math.pi), 2), round(received_frame.coordinates[BALL][X]/2.05, 2),
-                        round(received_frame.coordinates[BALL][Y]/1.35, 2)]
+            for int i in range(5):
+                # Example: using the normalized coordinates for robot 0 and ball
+                position = [round(received_frame.coordinates[MY_TEAM][0][X]/2.05, 2), round(received_frame.coordinates[MY_TEAM][0][Y]/1.35, 2),
+                            round(received_frame.coordinates[MY_TEAM][0][TH]/(2*math.pi), 2), round(received_frame.coordinates[BALL][X]/2.05, 2),
+                            round(received_frame.coordinates[BALL][Y]/1.35, 2)]
 
-            # Action
-            if np.random.rand() < self.epsilon:
-                action = random.randint(0,10)
-            else:
-                action = self.Q.BestAction(np.array(position)) # using CNNs use final_img as input
+                # Action
+                if np.random.rand() < self.epsilon:
+                    action = random.randint(0,10)
+                else:
+                    action = self.Q.BestAction(np.array(position)) # using CNNs use final_img as input
 
-            # Set robot wheels
-            set_action(0, action)
+                # Set robot wheels
+                set_action(0, action)
+
+                if i == 0:
+                    # Update Replay Memory
+                    self.D.append([np.array(position), action, reward])
             set_wheel(self, self.wheels)
 
-            # Update Replay Memory
-            self.D.append([np.array(position), action, reward])
+            
 ##############################################################################
 
 ##############################################################################
