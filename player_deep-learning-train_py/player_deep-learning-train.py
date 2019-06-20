@@ -59,7 +59,7 @@ ACTIVE = 3
 TOUCH = 4
 
 #path to your checkpoint
-CHECKPOINT = os.path.join(os.path.dirname(__file__), 'dqn.ckpt')
+CHECKPOINT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dqn.ckpt')
 
 class Received_Image(object):
     def __init__(self, resolution, colorChannels):
@@ -298,10 +298,10 @@ class Component(ApplicationSession):
             #resized_img = img.resize((NEW_X,NEW_Y))
             #final_img = np.array(resized_img)
 
-            for int i in range(5):
+            for i in range(5):
                 # Example: using the normalized coordinates for robot 0 and ball
-                position = [round(received_frame.coordinates[MY_TEAM][0][X]/2.05, 2), round(received_frame.coordinates[MY_TEAM][0][Y]/1.35, 2),
-                            round(received_frame.coordinates[MY_TEAM][0][TH]/(2*math.pi), 2), round(received_frame.coordinates[BALL][X]/2.05, 2),
+                position = [round(received_frame.coordinates[MY_TEAM][i][X]/2.05, 2), round(received_frame.coordinates[MY_TEAM][i][Y]/1.35, 2),
+                            round(received_frame.coordinates[MY_TEAM][i][TH]/(2*math.pi), 2), round(received_frame.coordinates[BALL][X]/2.05, 2),
                             round(received_frame.coordinates[BALL][Y]/1.35, 2)]
 
                 # Action
@@ -311,7 +311,7 @@ class Component(ApplicationSession):
                     action = self.Q.BestAction(np.array(position)) # using CNNs use final_img as input
 
                 # Set robot wheels
-                set_action(0, action)
+                set_action(i, action)
 
                 if i == 0:
                     # Update Replay Memory
@@ -345,6 +345,8 @@ class Component(ApplicationSession):
                     self.Q_.Copy(self.Q)
                     self.printConsole("Copied Target Network")
                 if self._iterations % self.save_every_steps == 0:
+                    #self.printConsole(CHECKPOINT)
+                    #self.printConsole(os.path.dirname(__file__))
                     self.Q.SaveToFile(CHECKPOINT)
                     self.printConsole("Saved Checkpoint")
                 if self._iterations % self.step_epsilon == 0:
