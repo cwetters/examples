@@ -138,19 +138,20 @@ private:
       drivePos(i);
     }
 
-    set_wheel(wheels); // every robot will go ahead with maximum velocity
+    set_wheel(wheels); 
   }
 
-  // convert degree to radian
-  double d2r(double deg) {
+  double d2r(double deg) // convert degrees to radians 
+  {
     return deg * PI / 180;
   }
 
-  double r2d(double rad) {
+  double r2d(double rad) // convert radians to degrees (mostly for readout) 
+  {
     return rad * 180 / PI;
   }
 
-  void wrapHeadings(){
+  void wrapHeadings(){ //wrap headings between -PI and PI
     for(int i=0; i<5; i++)
     {
       while(cur_posture[i][2] > PI)
@@ -164,13 +165,13 @@ private:
     }
   }
 
-  void goalPosUpdate()
+  void goalPosUpdate() //update goal position to be in a scoop formation around current ball location pointed goal-wards
   {
     double ball_to_goal_post_up = std::atan2(goal_posts[1][1] - cur_ball[1], goal_posts[1][0] - cur_ball[0]);
     double ball_to_goal_post_down = std::atan2( goal_posts[1][1] - cur_ball[1], goal_posts[1][0] - cur_ball[0]);
 
     double goal_dir_rad;
-    if (std::rand() % 2 == 0)
+    if (std::rand() % 2 == 0) // mix up target angle to confuse the oponents ;)
     {
         goal_dir_rad = ball_to_goal_post_up;
     } else 
@@ -181,7 +182,7 @@ private:
     double ctheta = std::cos(goal_dir_rad);
     double stheta = std::sin(goal_dir_rad);
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 5; i++) // set relative positions rotated around point p by direction theta
     {
       goal_pos[i][0] = cur_ball[0] + goal_rel[i][0]*ctheta - goal_rel[i][1]*stheta;
       goal_pos[i][1] = cur_ball[1] + goal_rel[i][1]*ctheta + goal_rel[i][0]*stheta;
@@ -198,8 +199,8 @@ private:
     }
 
   }
-  double wrapHeadingDiff(double h) //wrap 0, 360
-  {
+  double wrapHeadingDiff(double h) // wrap [0, 2*PI]
+    {
      while(h < 0)
     {
       h = h + 2*PI;
@@ -227,7 +228,7 @@ private:
     
   }
 
-  void drivePos(std::size_t id)
+  void drivePos(std::size_t id) // given a target position from goal_pos, set drive wheels to get there
   {
     double to_travel_x = goal_pos[id][0] - cur_posture[id][0];
     double to_travel_y = goal_pos[id][1] - cur_posture[id][1];
@@ -281,15 +282,15 @@ private: // member variable
 
 std::array<std::array<double, 5>, 5> cur_posture; //X, Y, THETA, ACTIVE, TOUCH
 std::array<std::array<double, 5>, 5> cur_posture_op;
-std::array<double, 2> cur_ball;
+std::array<double, 2> cur_ball; // X, Y
 double time;
-int count = 0;
-int refreshAfter = 1;
+int count = 0; // count of number of frames seen since last refresh
+int refreshAfter = 1; // how often to refresh goals
 
 std::array<std::array<double, 3>, 5> goal_pos; //X, Y, THETA
 std::array<std::array<double, 2>, 5> goal_rel; //X, Y
 
-std::array<std::array<double, 2>, 3> goal_posts;
+std::array<std::array<double, 2>, 3> goal_posts; // boundary of the goal box
 std::array<double, 10> wheels;
 
 };
