@@ -35,16 +35,16 @@ private:
     goal_posts[1][1] = 0.0;
     goal_posts[2][0] = 3.9;
     goal_posts[2][1] = -0.5;
-    goal_rel[0][0] = 0.0;
-    goal_rel[0][1] = 0.3;
-    goal_rel[1][0] = 0.0;
-    goal_rel[1][1] = -0.3;
-    goal_rel[2][0] = -.03;
-    goal_rel[2][1] = 0.3;
-    goal_rel[3][0] = -0.3;
-    goal_rel[3][1] = -0.3;
-    goal_rel[4][0] = -0.2;
-    goal_rel[4][1] = 0.0;
+    goal_rel[3][0] = 0.0;
+    goal_rel[3][1] = 0.5;
+    goal_rel[4][0] = 0.0;
+    goal_rel[4][1] = -0.5;
+    goal_rel[1][0] = -.5;
+    goal_rel[1][1] = 0.5;
+    goal_rel[2][0] = -0.5;
+    goal_rel[2][1] = -0.5;
+    goal_rel[0][0] = -0.05;
+    goal_rel[0][1] = 0.0;
       }
 
   ///********* from player_rulebased-A.cpp
@@ -119,15 +119,35 @@ private:
     else { // given no coordinates, you need to get coordinates from image
     }
 
-    std::array<double, 10> wheels;
-    for(int i = 0; i < 2*info.number_of_robots; i++)
-      wheels[i] = info.max_linear_velocity[i/2];
+    //std::array<double, 10> wheels;
+    //for(int i = 0; i < 2*info.number_of_robots; i++)
+      //wheels[i] = info.max_linear_velocity[i/2];
+    count = count + 1;
+    if (count > refreshAfter){
+      count = 0;
+      goalPosUpdate();
+    }
+    //std::cout << cur_posture[0][0] << std::endl;
+    //std::cout << cur_posture[0][1] << std::endl;
+    //std::cout << cur_posture[0][2] << std::endl;
+    //std::cout << goal_pos[0][0] << std::endl;
+    //std::cout << goal_pos[0][1] << std::endl;
+    //std::cout << goal_pos[0][2] << std::endl;
+    for(int i=0; i<5; i++)
+    {
+      drivePos(i);
+    }
+
     set_wheel(wheels); // every robot will go ahead with maximum velocity
   }
 
   // convert degree to radian
   double d2r(double deg) {
     return deg * PI / 180;
+  }
+
+  double r2d(double rad) {
+    return rad * 180 / PI;
   }
 
   void wrapHeadings(){
@@ -146,8 +166,8 @@ private:
 
   void goalPosUpdate()
   {
-    double ball_to_goal_post_up = std::atan2(goal_posts[0][0] - cur_ball[0], goal_posts[0][1] - cur_ball[1]);
-    double ball_to_goal_post_down = std::atan2(goal_posts[2][0] - cur_ball[0], goal_posts[2][1] - cur_ball[1]);
+    double ball_to_goal_post_up = std::atan2(goal_posts[1][1] - cur_ball[1], goal_posts[1][0] - cur_ball[0]);
+    double ball_to_goal_post_down = std::atan2( goal_posts[1][1] - cur_ball[1], goal_posts[1][0] - cur_ball[0]);
 
     double goal_dir_rad;
     if (std::rand() % 2 == 0)
@@ -166,26 +186,87 @@ private:
       goal_pos[i][0] = cur_ball[0] + goal_rel[i][0]*ctheta - goal_rel[i][1]*stheta;
       goal_pos[i][1] = cur_ball[1] + goal_rel[i][1]*ctheta + goal_rel[i][0]*stheta;
       goal_pos[i][2] = goal_dir_rad;
+      if (i > 0)
+      {
+        goal_pos[i][0] = std::min(2.9, goal_pos[i][0]);
+      }
+
+      goal_pos[i][0] = std::max(-3.8, goal_pos[i][0]);
+      //goal_pos[i][0] = goal_rel[i][0];
+      //goal_pos[i][1] = goal_rel[i][1];
+      //goal_pos[i][2] = cur_posture[i][2];
     }
 
   }
+  double wrapHeadingDiff(double h) //wrap 0, 360
+  {
+     while(h < 0)
+    {
+      h = h + 2*PI;
+    }
+    while(h > 2*PI)
+    {
+      h = h - 2*PI;
+    }
+    return h;
+  }
 
-  void drivePos(std::size_t id, double x, double y)
+  double MinHeadingDiff(double h, double g) //pos diff is counter-clockwise turn, neg diff is clockwise turn
+  {
+    //std::cout << "my dir" << r2d(h) << "goal dir" << r2d(g) << std::endl;
+    double d = wrapHeadingDiff(g-h); //counter-clockwise turn distance
+    //std::cout << "diff" << r2d(d) << std::endl;
+    double dd = 2*PI - d; //clockwise turn distance
+    if (d > dd)
+    {
+      return -1*dd; //clockwise is closer, indicate with negative
+    } else
+    {
+      return d; //counter-clockwise is closer
+    }  
+    
+  }
+
+  void drivePos(std::size_t id)
   {
     double to_travel_x = goal_pos[id][0] - cur_posture[id][0];
     double to_travel_y = goal_pos[id][1] - cur_posture[id][1];
     //double to_spin = goal_pos[id][2] - cur_posture[id][2];
 
-    double robot_to_goal = std::atan2(to_travel_x, to_travel_y);
-    if (robot_to_goal >= PI/2.0 || robot_to_goal <= -PI/2.0) // point is toward own goal of robot
-    {
-      if (cur_posture[id][2] >= PI/2.0 || cur_posture[id][2] <= -PI/2.0) // robot is facing towards own goal
+    double robot_to_goal = std::atan2(to_travel_y, to_travel_x);
+    //td::cout << "robot_to_goal" << r2d(robot_to_goal) << std::endl;
+
+    double robot_diff_f_dir = MinHeadingDiff(wrapHeadingDiff(cur_posture[id][2]), wrapHeadingDiff(robot_to_goal)) ;
+    double robot_diff_b_dir = MinHeadingDiff(wrapHeadingDiff(cur_posture[id][2] + PI), wrapHeadingDiff(robot_to_goal));
+
+    bool forward = std::abs(robot_diff_f_dir) < std::abs(robot_diff_b_dir);
+    
+    //std::cout << r2d(robot_diff_f_dir) << "diff f" << std::endl;
+    //std::cout << r2d(robot_diff_b_dir) << "diff b" << std::endl;
+    double speed = info.max_linear_velocity[id];
+
+    if (forward){
+      if (robot_diff_f_dir > 0) // left forward turning
       {
-        
+        wheels[id*2 + 1] = speed; //right wheel full speed
+        wheels[id*2] = speed*(std::abs(robot_diff_f_dir)*-2.0/PI + 1); //slow left wheel as you need to turn more
+      } else { // right forward turning
+        wheels[id*2] = speed; // left wheel full speed
+        wheels[id*2+1] = speed*(std::abs(robot_diff_f_dir)*-2.0/PI + 1); //slow right wheel as you need to turn more
+      } 
+    }else{
+      if (robot_diff_b_dir > 0) // back right turning
+      {
+        wheels[id*2] = -1*speed; //left wheel full back speed
+        wheels[id*2+1] = -1*speed*(std::abs(robot_diff_b_dir)*-2.0/PI + 1); // slow right wheel back as you need to turn more
+
+      } else { // back left turning
+        wheels[id*2+1] = -1*speed; // right wheel full back speed
+        wheels[id*2] = -1*speed*(std::abs(robot_diff_b_dir)*-2.0/PI + 1); // slow left wheel back as you need to turn more
       }
 
     }
-
+     
 
   }
 
@@ -202,6 +283,8 @@ std::array<std::array<double, 5>, 5> cur_posture; //X, Y, THETA, ACTIVE, TOUCH
 std::array<std::array<double, 5>, 5> cur_posture_op;
 std::array<double, 2> cur_ball;
 double time;
+int count = 0;
+int refreshAfter = 1;
 
 std::array<std::array<double, 3>, 5> goal_pos; //X, Y, THETA
 std::array<std::array<double, 2>, 5> goal_rel; //X, Y
