@@ -35,15 +35,21 @@ private:
     goal_posts[1][1] = 0.0;
     goal_posts[2][0] = 3.9;
     goal_posts[2][1] = -0.5;
-    goal_rel[3][0] = 0.0;
-    goal_rel[3][1] = 0.5;
-    goal_rel[4][0] = 0.0;
-    goal_rel[4][1] = -0.5;
-    goal_rel[1][0] = -.5;
-    goal_rel[1][1] = 0.5;
-    goal_rel[2][0] = -0.5;
-    goal_rel[2][1] = -0.5;
-    goal_rel[0][0] = -0.05;
+    own_goal_posts[0][0] = -3.9;
+    own_goal_posts[0][1] = 0.5;
+    own_goal_posts[1][0] = -3.9;
+    own_goal_posts[1][1] = 0.0;
+    own_goal_posts[2][0] = -3.9;
+    own_goal_posts[2][1] = -0.5;
+    goal_rel[3][0] = -0.3;
+    goal_rel[3][1] = 0.0;
+    goal_rel[4][0] = -0.3;
+    goal_rel[4][1] = 0.0;
+    goal_rel[1][0] = 0.7;
+    goal_rel[1][1] = 0.0;
+    goal_rel[2][0] = 0.7;
+    goal_rel[2][1] = 0.0;
+    goal_rel[0][0] = 0.9;
     goal_rel[0][1] = 0.0;
       }
 
@@ -167,26 +173,19 @@ private:
 
   void goalPosUpdate() //update goal position to be in a scoop formation around current ball location pointed goal-wards
   {
-    double ball_to_goal_post_up = std::atan2(goal_posts[1][1] - cur_ball[1], goal_posts[1][0] - cur_ball[0]);
-    double ball_to_goal_post_down = std::atan2( goal_posts[1][1] - cur_ball[1], goal_posts[1][0] - cur_ball[0]);
-
-    double goal_dir_rad;
-    if (std::rand() % 2 == 0) // mix up target angle to confuse the oponents ;)
-    {
-        goal_dir_rad = ball_to_goal_post_up;
-    } else 
-    {
-      goal_dir_rad = ball_to_goal_post_down;
-    }
-
-    double ctheta = std::cos(goal_dir_rad);
-    double stheta = std::sin(goal_dir_rad);
+    goal_dir[4] = std::atan2(goal_posts[0][1] - 0, goal_posts[0][0] - 0);
+    goal_dir[3] = std::atan2( goal_posts[2][1] - 0, goal_posts[2][0] - 0);
+    goal_dir[1] = std::atan2(own_goal_posts[0][1] - 0, own_goal_posts[0][0] - 0);
+    goal_dir[0] = std::atan2(own_goal_posts[1][1] - 0, own_goal_posts[1][0] - 0);
+    goal_dir[2] = std::atan2(own_goal_posts[2][1] - 0, own_goal_posts[2][0] - 0);
 
     for (int i = 0; i < 5; i++) // set relative positions rotated around point p by direction theta
     {
+      double ctheta = std::cos(goal_dir[i]);
+      double stheta = std::sin(goal_dir[i]);
       goal_pos[i][0] = cur_ball[0] + goal_rel[i][0]*ctheta - goal_rel[i][1]*stheta;
       goal_pos[i][1] = cur_ball[1] + goal_rel[i][1]*ctheta + goal_rel[i][0]*stheta;
-      goal_pos[i][2] = goal_dir_rad;
+      goal_pos[i][2] = goal_dir[i];
       if (i > 0)
       {
         goal_pos[i][0] = std::min(2.9, goal_pos[i][0]);
@@ -289,8 +288,10 @@ int refreshAfter = 1; // how often to refresh goals
 
 std::array<std::array<double, 3>, 5> goal_pos; //X, Y, THETA
 std::array<std::array<double, 2>, 5> goal_rel; //X, Y
+std::array<double, 5> goal_dir;
 
 std::array<std::array<double, 2>, 3> goal_posts; // boundary of the goal box
+std::array<std::array<double, 2>, 3> own_goal_posts; // boundary of the goal box
 std::array<double, 10> wheels;
 
 };
