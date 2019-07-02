@@ -6,7 +6,7 @@ import numpy as np
 
 class NeuralNetwork:
 	def __init__(self, NetworkToCopy = None, RestoreFromFile = False, ReplayNetwork = False):
-		self.frame_res = 5     # Resolution of the input
+		self.frame_res = 6     # Resolution of the input
 		self.nframes = 1       # Number of frames/channels of the input
 		NumberOfActions = 11    # Number of possible actions
 		learning_rate = 1e-4   # Learning Rate		

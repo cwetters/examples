@@ -55,7 +55,7 @@ ACTIVE = 3
 TOUCH = 4
 
 #path to your checkpoint
-CHECKPOINT = os.path.join(os.path.dirname(__file__), 'dqn.ckpt')
+CHECKPOINT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dqn.ckpt')
 
 class Received_Image(object):
     def __init__(self, resolution, colorChannels):
@@ -275,15 +275,16 @@ class Component(ApplicationSession):
             #final_img = np.array(resized_img)
 
             # Example: using the normalized coordinates for robot 0 and ball
-            position = [round(received_frame.coordinates[MY_TEAM][0][X]/2.05, 2), round(received_frame.coordinates[MY_TEAM][0][Y]/1.35, 2),
-                        round(received_frame.coordinates[MY_TEAM][0][TH]/(2*math.pi), 2), round(received_frame.coordinates[BALL][X]/2.05, 2),
-                        round(received_frame.coordinates[BALL][Y]/1.35, 2)]
+            for i in range(5):
+                position = [i, round(received_frame.coordinates[MY_TEAM][i][X]/2.05, 2), round(received_frame.coordinates[MY_TEAM][i][Y]/1.35, 2),
+                            round(received_frame.coordinates[MY_TEAM][i][TH]/(2*math.pi), 2), round(received_frame.coordinates[BALL][X]/2.05, 2),
+                            round(received_frame.coordinates[BALL][Y]/1.35, 2)]
 
-            # Action
-            action = self.Q.BestAction(np.array(position)) # using CNNs use final_img as input
+                # Action
+                action = self.Q.BestAction(np.array(position)) # using CNNs use final_img as input
 
-            # Set robot wheels
-            set_action(0, action)
+                # Set robot wheels
+                set_action(i, action)
             set_wheel(self, self.wheels)
 
 ##############################################################################

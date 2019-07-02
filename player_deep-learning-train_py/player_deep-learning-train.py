@@ -58,6 +58,23 @@ TH = 2
 ACTIVE = 3
 TOUCH = 4
 
+#targets
+targets = {
+    0 : [-3.9, 0],
+    1 : [-3.9, 0.5],
+    2 : [-3.9, -0.5],
+    3 : [3.9, -0.7],
+    4 : [3.9, 0.7]
+}
+
+reltoball = {
+    0 : [1, 0],
+    1 : [.6, 0],
+    2 : [.6, 0],
+    3 : [.08, 0.1],
+    4 : [.08, -0.1]
+}
+
 #path to your checkpoint
 CHECKPOINT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dqn.ckpt')
 
@@ -150,17 +167,17 @@ class Component(ApplicationSession):
             self.colorChannels = 3 # nf
             self.end_of_frame = False
             self.image = Received_Image(self.resolution, self.colorChannels)
-            self.D = [] # Replay Memory
+            self.D = {0:[], 1:[], 2:[], 3:[], 4:[]} # Replay Memory
             self.update = 100 # Update Target Network
             self.epsilon = 1.0 # Initial epsilon value
             self.final_epsilon = 0.05 # Final epsilon value
-            self.dec_epsilon = 0.05 # Decrease rate of epsilon for every generation
+            self.dec_epsilon = 0.01 # Decrease rate of epsilon for every generation
             self.step_epsilon = 20000 # Number of iterations for every generation
-            self.observation_steps = 5000 # Number of iterations to observe before training every generation
+            self.observation_steps = 1000 # Number of iterations to observe before training every generation
             self.save_every_steps = 5000 # Save checkpoint
             self.num_actions = 11 # Number of possible possible actions
             self._frame = 0
-            self._iterations = 0
+            self._iterations = 280000
             self.minibatch_size = 64
             self.gamma = 0.99
             self.sqerror = 100 # Initial sqerror value
@@ -198,46 +215,47 @@ class Component(ApplicationSession):
             return
 
         def set_action(robot_id, action_number):
+            maxspeed = self.max_linear_velocity[robot_id]
             if action_number == 0:
-                self.wheels[2*robot_id] = 0.75
-                self.wheels[2*robot_id + 1] = 0.75
+                self.wheels[2*robot_id] = 1.00*maxspeed
+                self.wheels[2*robot_id + 1] = 1.00*maxspeed
                 # Go Forward with fixed velocity
             elif action_number == 1:
-                self.wheels[2*robot_id] = 0.75
-                self.wheels[2*robot_id + 1] = 0.5
-                # Turn
+                self.wheels[2*robot_id] = 1.00*maxspeed
+                self.wheels[2*robot_id + 1] = 0.5*maxspeed
+                # Curve forward right
             elif action_number == 2:
-                self.wheels[2*robot_id] = 0.75
-                self.wheels[2*robot_id + 1] = 0.25
-                # Turn
-            elif action_number == 3:
-                self.wheels[2*robot_id] = 0.75
+                self.wheels[2*robot_id] = 1.00*maxspeed
                 self.wheels[2*robot_id + 1] = 0
-                # Turn
-            elif action_number == 4:
-                self.wheels[2*robot_id] = 0.5
-                self.wheels[2*robot_id + 1] = 75
-                # Turn
-            elif action_number == 5:
-                self.wheels[2*robot_id] = 0.25
-                self.wheels[2*robot_id + 1] = 0.75
-                # Turn
-            elif action_number == 6:
+                # Turn forward right
+            elif action_number == 3:
                 self.wheels[2*robot_id] = 0
-                self.wheels[2*robot_id + 1] = 0.75
-                # Turn
+                self.wheels[2*robot_id + 1] = 1.00*maxspeed
+                # Turn forward left
+            elif action_number == 4:
+                self.wheels[2*robot_id] = 0.5*maxspeed
+                self.wheels[2*robot_id + 1] = 1.00*maxspeed
+                # Curve forward left
+            elif action_number == 5:
+                self.wheels[2*robot_id] = -1.00*maxspeed
+                self.wheels[2*robot_id + 1] = 0
+                # Turn back right
+            elif action_number == 6:
+                self.wheels[2*robot_id] = -1.00*maxspeed
+                self.wheels[2*robot_id + 1] = -0.5*maxspeed
+                # Curve back right
             elif action_number == 7:
-                self.wheels[2*robot_id] = -0.75
-                self.wheels[2*robot_id + 1] = -0.75
+                self.wheels[2*robot_id] = -1.00*maxspeed
+                self.wheels[2*robot_id + 1] = -1.00*maxspeed
                 # Go Backward with fixed velocity
             elif action_number == 8:
-                self.wheels[2*robot_id] = -0.1
-                self.wheels[2*robot_id + 1] = 0.1
-                # Spin
+                self.wheels[2*robot_id] = -0.5*maxspeed
+                self.wheels[2*robot_id + 1] = -1.00*maxspeed
+                # Curve back left
             elif action_number == 9:
-                self.wheels[2*robot_id] = 0.1
-                self.wheels[2*robot_id + 1] = -0.1
-                # Spin
+                self.wheels[2*robot_id] = 0
+                self.wheels[2*robot_id + 1] = -1.00*maxspeed
+                # Turn back left
             elif action_number == 10:
                 self.wheels[2*robot_id] = 0
                 self.wheels[2*robot_id + 1] = 0
@@ -287,10 +305,9 @@ class Component(ApplicationSession):
 ##############################################################################
             #(virtual update())
 
-            # Reward
-            reward = math.exp(-10*(distance(received_frame.coordinates[MY_TEAM][0][X], received_frame.coordinates[BALL][X], received_frame.coordinates[MY_TEAM][0][Y], received_frame.coordinates[BALL][Y])/4.1))
-
-            # State
+            # Reward 
+            
+            # State [robot id, robot x, robot y, robot theta, ball x, ball y]
 
             # If you want to use the image as the input for your network
             # You can use pillow: PIL.Image to get and resize the input frame as follows
@@ -298,11 +315,35 @@ class Component(ApplicationSession):
             #resized_img = img.resize((NEW_X,NEW_Y))
             #final_img = np.array(resized_img)
 
+            def reward(id, x, y, bx, by):
+                balltotarget = np.arctan2(targets[i][1] - by, targets[i][0] - bx)
+                centerx = targets[i][0]*np.cos(balltotarget) - targets[i][1]*np.sin(balltotarget) + bx
+                centery = targets[i][1]*np.cos(balltotarget) + targets[i][0]*np.sin(balltotarget) + by
+                ## bound??
+                thetadiff = np.pi/4 - balltotarget
+
+                xdiff = x - centerx
+                ydiff = y - centery
+                rdiff = np.sqrt(xdiff**2 + ydiff**2)
+                rdiffrot = rdiff*np.arctan(xdiff*np.cos(thetadiff) - ydiff*np.sin(thetadiff) + ydiff*np.cos(thetadiff) + xdiff*np.sin(thetadiff))
+                gausspos = 1/np.sqrt(2*np.pi)*np.power(np.e, -1/2*np.power(rdiffrot + 1,2))
+                gaussneg = 1/np.sqrt(2*np.pi)*np.power(np.e, -1/2*np.power(rdiffrot - 1,2))
+                gaussfil = 4/np.sqrt(2*np.pi)*np.power(np.e, -1/2*np.power(rdiff*4,2))
+                return 20.0*(gausspos - gaussneg)*gaussfil -0.1*rdiff
+
+
             for i in range(5):
-                # Example: using the normalized coordinates for robot 0 and ball
-                position = [round(received_frame.coordinates[MY_TEAM][i][X]/2.05, 2), round(received_frame.coordinates[MY_TEAM][i][Y]/1.35, 2),
-                            round(received_frame.coordinates[MY_TEAM][i][TH]/(2*math.pi), 2), round(received_frame.coordinates[BALL][X]/2.05, 2),
-                            round(received_frame.coordinates[BALL][Y]/1.35, 2)]
+                cx = received_frame.coordinates[MY_TEAM][i][X]
+                cy = received_frame.coordinates[MY_TEAM][i][Y]
+                ct = received_frame.coordinates[MY_TEAM][i][TH]
+                cbx = received_frame.coordinates[BALL][X]
+                cby = received_frame.coordinates[BALL][Y]
+                
+                rwd = reward(i, cx, cy, cbx, cby)
+                # Example: using the normalized coordinates for robots and ball
+                position = [i, round(cx/2.05, 2), round(cy/1.35, 2),
+                            round(ct/(2*math.pi), 2), round(cbx/2.05, 2),
+                            round(cby/1.35, 2)]
 
                 # Action
                 if np.random.rand() < self.epsilon:
@@ -312,10 +353,9 @@ class Component(ApplicationSession):
 
                 # Set robot wheels
                 set_action(i, action)
+                # Update Replay Memory
+                self.D[i].append([np.array(position), action, rwd])
 
-                if i == 0:
-                    # Update Replay Memory
-                    self.D.append([np.array(position), action, reward])
             set_wheel(self, self.wheels)
 
             
@@ -324,18 +364,20 @@ class Component(ApplicationSession):
 ##############################################################################
 
             # Training!
-            if len(self.D) >= self.observation_steps:
+            #self.printConsole(len(self.D[0]))
+            if len(self.D[0]) >= self.observation_steps:
                 self._iterations += 1
                 a = np.zeros((self.minibatch_size, self.num_actions))
                 r = np.zeros((self.minibatch_size, 1))
-                batch_phy = np.zeros((self.minibatch_size, 5)) # depends on what is your input state
-                batch_phy_ = np.zeros((self.minibatch_size, 5)) # depends on what is your input state
+                batch_phy = np.zeros((self.minibatch_size, 6)) # depends on what is your input state
+                batch_phy_ = np.zeros((self.minibatch_size, 6)) # depends on what is your input state
                 for i in range(self.minibatch_size):
-                    index = np.random.randint(len(self.D)-1) # Sample a random index from the replay memory
-                    a[i] = [0 if j !=self.D[index][1] else 1 for j in range(self.num_actions)]
-                    r[i] = self.D[index][2]
-                    batch_phy[i] = self.D[index][0].reshape((1,5)) # depends on what is your input state
-                    batch_phy_[i] = self.D[index+1][0].reshape((1,5)) # depends on what is your input state
+                    player = i%5
+                    index = np.random.randint(len(self.D[player])-1) # Sample a random index from the replay memory
+                    a[i] = [0 if j !=self.D[player][index][1] else 1 for j in range(self.num_actions)]
+                    r[i] = self.D[player][index][2]
+                    batch_phy[i] = self.D[player][index][0].reshape((1,6)) # depends on what is your input state
+                    batch_phy_[i] = self.D[player][index+1][0].reshape((1,6)) # depends on what is your input state
                 y_value = r + self.gamma*np.max(self.Q_.IterateNetwork(batch_phy_), axis=1).reshape((self.minibatch_size,1))
                 self.sqerror = self.Q.TrainNetwork(batch_phy, a, y_value)
                 if self._iterations % 100 == 0: # Print information every 100 iterations
@@ -351,7 +393,7 @@ class Component(ApplicationSession):
                     self.printConsole("Saved Checkpoint")
                 if self._iterations % self.step_epsilon == 0:
                     self.epsilon = max(self.epsilon - self.dec_epsilon, self.final_epsilon)
-                    self.D = [] # Reset Replay Memory for new generation
+                    self.D = {0:[], 1:[], 2:[], 3:[], 4:[]} # Reset replay Memory
                     self.printConsole("New Episode! New Epsilon:" + str(self.epsilon))
 
 ##############################################################################

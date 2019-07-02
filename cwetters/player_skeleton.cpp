@@ -41,14 +41,14 @@ private:
     own_goal_posts[1][1] = 0.0;
     own_goal_posts[2][0] = -3.9;
     own_goal_posts[2][1] = -0.5;
-    goal_rel[3][0] = -0.3;
-    goal_rel[3][1] = 0.0;
-    goal_rel[4][0] = -0.3;
-    goal_rel[4][1] = 0.0;
-    goal_rel[1][0] = 0.7;
-    goal_rel[1][1] = 0.0;
-    goal_rel[2][0] = 0.7;
-    goal_rel[2][1] = 0.0;
+    goal_rel[3][0] = -0.05;
+    goal_rel[3][1] = 0.2;
+    goal_rel[4][0] = -0.05;
+    goal_rel[4][1] = -0.2;
+    goal_rel[1][0] = 0.5;
+    goal_rel[1][1] = -0.3;
+    goal_rel[2][0] = 0.5;
+    goal_rel[2][1] = 0.3;
     goal_rel[0][0] = 0.9;
     goal_rel[0][1] = 0.0;
       }
@@ -173,11 +173,11 @@ private:
 
   void goalPosUpdate() //update goal position to be in a scoop formation around current ball location pointed goal-wards
   {
-    goal_dir[4] = std::atan2(goal_posts[0][1] - 0, goal_posts[0][0] - 0);
-    goal_dir[3] = std::atan2( goal_posts[2][1] - 0, goal_posts[2][0] - 0);
-    goal_dir[1] = std::atan2(own_goal_posts[0][1] - 0, own_goal_posts[0][0] - 0);
-    goal_dir[0] = std::atan2(own_goal_posts[1][1] - 0, own_goal_posts[1][0] - 0);
-    goal_dir[2] = std::atan2(own_goal_posts[2][1] - 0, own_goal_posts[2][0] - 0);
+    goal_dir[4] = std::atan2(goal_posts[0][1] - cur_ball[1], goal_posts[0][0] - cur_ball[0]);
+    goal_dir[3] = std::atan2( goal_posts[2][1] - cur_ball[1], goal_posts[2][0] - cur_ball[0]);
+    goal_dir[1] = std::atan2(own_goal_posts[0][1] - cur_ball[1], own_goal_posts[0][0] - cur_ball[0]);
+    goal_dir[0] = std::atan2(own_goal_posts[1][1] - cur_ball[1], own_goal_posts[1][0] - cur_ball[0]);
+    goal_dir[2] = std::atan2(own_goal_posts[2][1] - cur_ball[1], own_goal_posts[2][0] - cur_ball[0]);
 
     for (int i = 0; i < 5; i++) // set relative positions rotated around point p by direction theta
     {

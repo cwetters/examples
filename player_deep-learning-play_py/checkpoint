@@ -1,2 +1,2 @@
-model_checkpoint_path: "/home/aiwc/Desktop/examples_develop/player_deep-learning-play_py/dqn.ckpt"
-all_model_checkpoint_paths: "/home/aiwc/Desktop/examples_develop/player_deep-learning-play_py/dqn.ckpt"
+model_checkpoint_path: "/home/cwetters/wcg_ai_soccer/examples/player_deep-learning-train_py/dqn.ckpt"
+all_model_checkpoint_paths: "/home/cwetters/wcg_ai_soccer/examples/player_deep-learning-train_py/dqn.ckpt"
