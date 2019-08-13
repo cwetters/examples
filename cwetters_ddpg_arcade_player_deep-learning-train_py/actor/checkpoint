@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/cwetters/wcg_ai_soccer/examples/cwetters_ddpg_arcade_player_deep-learning-train_py/actor/ddpg.actor.ckpt"
+all_model_checkpoint_paths: "/home/cwetters/wcg_ai_soccer/examples/cwetters_ddpg_arcade_player_deep-learning-train_py/actor/ddpg.actor.ckpt"

@@ -73,7 +73,7 @@ private:
 
     std::array<double, 10> wheels;
     for(int i = 0; i < 2*info.number_of_robots; i++)
-      wheels[i] = info.max_linear_velocity[i/2];
+      wheels[i] = 0;
     set_wheel(wheels); // every robot will go ahead with maximum velocity
   }
 

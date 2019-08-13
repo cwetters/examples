@@ -171,19 +171,22 @@ class Component(ApplicationSession):
             self.update = 100 # Update Target Network
             self.epsilon = 1.0 # Initial epsilon value
             self.final_epsilon = 0.05 # Final epsilon value
-            self.dec_epsilon = 0.01 # Decrease rate of epsilon for every generation
+            self.dec_epsilon = 0.05 # Decrease rate of epsilon for every generation
             self.step_epsilon = 20000 # Number of iterations for every generation
             self.observation_steps = 1000 # Number of iterations to observe before training every generation
             self.save_every_steps = 5000 # Save checkpoint
             self.num_actions = 11 # Number of possible possible actions
             self._frame = 0
-            self._iterations = 280000
+            self._iterations = 0
             self.minibatch_size = 64
             self.gamma = 0.99
             self.sqerror = 100 # Initial sqerror value
             self.Q = NeuralNetwork(None, False, False) # 2nd term: False to start training from scratch, use CHECKPOINT to load a checkpoint
             self.Q_ = NeuralNetwork(self.Q, False, True)
             self.wheels = [0 for _ in range(10)]
+            self.last_ball_x = 0
+            self.last_ball_y = 0
+            self.inputsize = 35
             return
 ##############################################################################
 
@@ -315,7 +318,11 @@ class Component(ApplicationSession):
             #resized_img = img.resize((NEW_X,NEW_Y))
             #final_img = np.array(resized_img)
 
-            def reward(id, x, y, bx, by):
+            by = received_frame.coordinates[BALL][Y]
+            bx = received_frame.coordinates[BALL][X]
+
+            
+            def reward(id, x, y):
                 balltotarget = np.arctan2(targets[i][1] - by, targets[i][0] - bx)
                 centerx = targets[i][0]*np.cos(balltotarget) - targets[i][1]*np.sin(balltotarget) + bx
                 centery = targets[i][1]*np.cos(balltotarget) + targets[i][0]*np.sin(balltotarget) + by
@@ -331,20 +338,24 @@ class Component(ApplicationSession):
                 gaussfil = 4/np.sqrt(2*np.pi)*np.power(np.e, -1/2*np.power(rdiff*4,2))
                 return 20.0*(gausspos - gaussneg)*gaussfil -0.1*rdiff
 
-
+            position = []
             for i in range(5):
-                cx = received_frame.coordinates[MY_TEAM][i][X]
-                cy = received_frame.coordinates[MY_TEAM][i][Y]
-                ct = received_frame.coordinates[MY_TEAM][i][TH]
-                cbx = received_frame.coordinates[BALL][X]
-                cby = received_frame.coordinates[BALL][Y]
-                
-                rwd = reward(i, cx, cy, cbx, cby)
-                # Example: using the normalized coordinates for robots and ball
-                position = [i, round(cx/2.05, 2), round(cy/1.35, 2),
-                            round(ct/(2*math.pi), 2), round(cbx/2.05, 2),
-                            round(cby/1.35, 2)]
+                mx = received_frame.coordinates[MY_TEAM][i][X]
+                my = received_frame.coordinates[MY_TEAM][i][Y]
+                mt = received_frame.coordinates[MY_TEAM][i][TH]
+                ox = received_frame.coordinates[OP_TEAM][i][X]
+                oy = received_frame.coordinates[OP_TEAM][i][Y]
+                ot = received_frame.coordinates[OP_TEAM][i][TH]
 
+                
+                position.extend([round(mx/3.9, 2), round(my/2.45, 2),
+                            round(mt/(2*math.pi), 2), round(ox/3.9, 2), round(oy/2.45, 2),
+                            round(ot/(2*math.pi), 2)])
+
+            position.extend([self.last_ball_x, self.last_ball_y, bx, by ])
+            position.insert(0,0)
+            for j in range(5):
+                position[0] = j
                 # Action
                 if np.random.rand() < self.epsilon:
                     action = random.randint(0,10)
@@ -352,9 +363,13 @@ class Component(ApplicationSession):
                     action = self.Q.BestAction(np.array(position)) # using CNNs use final_img as input
 
                 # Set robot wheels
-                set_action(i, action)
+                set_action(j, action)
                 # Update Replay Memory
-                self.D[i].append([np.array(position), action, rwd])
+                rwd = reward(j, position[j*6+1], position[j*6+2])
+                self.D[j].append([np.array(position), action, rwd])
+                
+            self.last_ball_x = bx
+            self.last_ball_y = by
 
             set_wheel(self, self.wheels)
 
@@ -369,15 +384,15 @@ class Component(ApplicationSession):
                 self._iterations += 1
                 a = np.zeros((self.minibatch_size, self.num_actions))
                 r = np.zeros((self.minibatch_size, 1))
-                batch_phy = np.zeros((self.minibatch_size, 6)) # depends on what is your input state
-                batch_phy_ = np.zeros((self.minibatch_size, 6)) # depends on what is your input state
+                batch_phy = np.zeros((self.minibatch_size, self.inputsize)) # depends on what is your input state
+                batch_phy_ = np.zeros((self.minibatch_size, self.inputsize)) # depends on what is your input state
                 for i in range(self.minibatch_size):
                     player = i%5
                     index = np.random.randint(len(self.D[player])-1) # Sample a random index from the replay memory
                     a[i] = [0 if j !=self.D[player][index][1] else 1 for j in range(self.num_actions)]
                     r[i] = self.D[player][index][2]
-                    batch_phy[i] = self.D[player][index][0].reshape((1,6)) # depends on what is your input state
-                    batch_phy_[i] = self.D[player][index+1][0].reshape((1,6)) # depends on what is your input state
+                    batch_phy[i] = self.D[player][index][0].reshape((1,self.inputsize)) # depends on what is your input state
+                    batch_phy_[i] = self.D[player][index+1][0].reshape((1,self.inputsize)) # depends on what is your input state
                 y_value = r + self.gamma*np.max(self.Q_.IterateNetwork(batch_phy_), axis=1).reshape((self.minibatch_size,1))
                 self.sqerror = self.Q.TrainNetwork(batch_phy, a, y_value)
                 if self._iterations % 100 == 0: # Print information every 100 iterations
