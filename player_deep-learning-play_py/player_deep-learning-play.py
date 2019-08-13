@@ -55,7 +55,7 @@ ACTIVE = 3
 TOUCH = 4
 
 #path to your checkpoint
-CHECKPOINT = os.path.join(os.path.dirname(__file__), 'dqn.ckpt')
+CHECKPOINT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dqn.ckpt')
 
 class Received_Image(object):
     def __init__(self, resolution, colorChannels):
@@ -150,6 +150,8 @@ class Component(ApplicationSession):
             self._frame = 0
             self.Q = NeuralNetwork(None, CHECKPOINT, False) # 2nd term: False to start training from scratch, use CHECKPOINT to load a checkpoint
             self.wheels = [0 for _ in range(10)]
+            self.last_ball_x = 0
+            self.last_ball_y = 0
             return
 ##############################################################################
 
@@ -277,18 +279,53 @@ class Component(ApplicationSession):
             #resized_img = img.resize((NEW_X,NEW_Y))
             #final_img = np.array(resized_img)
 
-            # Example: using the normalized coordinates for robot 0 and ball
-            position = [round(self.received_frame.coordinates[MY_TEAM][0][X]/2.05, 2), round(self.received_frame.coordinates[MY_TEAM][0][Y]/1.35, 2),
-                        round(self.received_frame.coordinates[MY_TEAM][0][TH]/(2*math.pi), 2), round(self.received_frame.coordinates[BALL][X]/2.05, 2),
-                        round(self.received_frame.coordinates[BALL][Y]/1.35, 2)]
+            by = received_frame.coordinates[BALL][Y]
+            bx = received_frame.coordinates[BALL][X]
+            dely = by - self.last_ball_y
+            delx = bx - self.last_ball_x
+            
+            ball_vec = 0
+            if (delx != 0):
+                ball_vec = (dely)/(delx)
+            op_goal_line_cross = by - ball_vec*(bx - 3.9)
+            own_goal_line_cross = by - ball_vec*(bx + 3.9)
+            rwd = 0.0
+            
+            if(bx >= self.last_ball_x):
+                if(op_goal_line_cross > -0.5 and op_goal_line_cross < 0.5):
+                    rwd = 1.0
+            else:
+                if(own_goal_line_cross > -0.5 and own_goal_line_cross < 0.5):
+                    rwd = 0.0
 
-            # Action
-            action = self.Q.BestAction(np.array(position)) # using CNNs use final_img as input
+            position = []
+            for i in range(5):
+                mx = received_frame.coordinates[MY_TEAM][i][X]
+                my = received_frame.coordinates[MY_TEAM][i][Y]
+                mt = received_frame.coordinates[MY_TEAM][i][TH]
+                ox = received_frame.coordinates[OP_TEAM][i][X]
+                oy = received_frame.coordinates[OP_TEAM][i][Y]
+                ot = received_frame.coordinates[OP_TEAM][i][TH]
 
-            # Set robot wheels
-            set_action(0, action)
+                
+                position.extend([round(mx/3.9, 2), round(my/2.45, 2),
+                            round(mt/(2*math.pi), 2), round(ox/3.9, 2), round(oy/2.45, 2),
+                            round(ot/(2*math.pi), 2)])
+
+            position.extend([self.last_ball_x, self.last_ball_y, bx, by ])
+            position.insert(0,0)
+            for j in range(5):
+                position[0] = j
+                # Action
+                action = self.Q.BestAction(np.array(position)) # using CNNs use final_img as input
+
+                # Set robot wheels
+                set_action(j, action)
+                
+            self.last_ball_x = bx
+            self.last_ball_y = by
+
             set_wheel(self, self.wheels)
-
 ##############################################################################
 
             if(self.received_frame.reset_reason == GAME_END):
